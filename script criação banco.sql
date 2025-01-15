@@ -7,8 +7,7 @@ USE Projeto_bd;
 
 CREATE TABLE Clientes(
 	Nome varchar(100) NOT NULL,
-    ID_Cliente int PRIMARY KEY AUTO_INCREMENT,
-    CPF_CNPJ char(15) NOT NULL,
+    CPF_CNPJ varchar(18) PRIMARY KEY,
     Telefone varchar(20) NOT NULL,
     Email varchar(60) NOT NULL,
     Endereço varchar (50) NOT NULL
@@ -16,30 +15,35 @@ CREATE TABLE Clientes(
     
 CREATE TABLE Projeto(
 	Nome varchar(100) NOT NULL,
-    ID_Projeto int PRIMARY KEY AUTO_INCREMENT,
+	ID_Projeto int PRIMARY KEY AUTO_INCREMENT,
     Descricao varchar(250) NOT NULL,
     Data_Inicio date NOT NULL,
     Data_Fim_Prev date NOT NULL,
     Status_ varchar(15) NOT NULL,
-    Orcamento_previsto int NOT NULL,
-    Id_contratante int NOT NULL,
-    FOREIGN KEY (Id_contratante) REFERENCES Clientes(ID_Cliente),
+    Orcamento_previsto double NOT NULL,
+    Contratante int NOT NULL,
+    Equipe_Resp int NOT NULL,
+    FOREIGN KEY (Contratante) REFERENCES Clientes(CPF_CNPJ),
+    FOREIGN KEY (Equipe_Resp) REFERENCES Equipe(ID_Equipe),
     CHECK (Status_ = "Planejado" OR Status_ = "Em andamento" OR Status_ = "Concluido")
     );
     
 CREATE TABLE Engenheiro(
-	ID_Engenheiro int PRIMARY KEY AUTO_INCREMENT,
 	Nome varchar(100) NOT NULL,
-	CREA char(10) NOT NULL UNIQUE,
+	CREA char(10) PRIMARY KEY,
 	Telefone varchar(20) NOT NULL,
-	Email varchar(60) NOT NULL
+	Email varchar(60) NOT NULL,
+	Proj_Atual int,
+	Equipe int,
+	FOREIGN KEY (Proj_Atual) REFERENCES Projeto(ID_Projeto),
+	FOREIGN KEY (Equipe) REFERENCES Equipe(ID_Equipe)
 	);
 
 CREATE TABLE Equipe(
 	ID_Equipe int PRIMARY KEY AUTO_INCREMENT,
     Nome varchar(100) NOT NULL,
     Supervisor int NOT NULL,
-    FOREIGN KEY (Supervisor) REFERENCES Engenheiro(ID_Engenheiro)
+    FOREIGN KEY (Supervisor) REFERENCES Engenheiro(CREA)
 	);
     
 CREATE TABLE Tarefa(
@@ -58,14 +62,13 @@ CREATE TABLE Material(
 	ID_Material int PRIMARY KEY AUTO_INCREMENT,
     Nome varchar(100) NOT NULL,
     Un_Medida varchar(3) NOT NULL,
-    Preco_Un_Medio int NOT NULL,
+    Preco_Un_Medio double NOT NULL,
     Estoque int NOT NULL
     );
     
 CREATE TABLE Fornecedor(
-	ID_Fornecedor int PRIMARY KEY AUTO_INCREMENT,
-    Nome varchar(100) NOT NULL,
-	CNPJ char(18) NOT NULL,
+    	Nome varchar(100) NOT NULL,
+	CNPJ char(18) PRIMARY KEY,
 	Telefone varchar(20) NOT NULL,
 	Email varchar(100)  NOT NULL,
 	Endereco varchar(150) NOT NULL
@@ -97,8 +100,38 @@ CREATE TABLE Pagamentos(
     Data_Pag date NOT NULL,
     Forma_Pag varchar(13) NOT NULL,
     Comprovante int NOT NULL,
-    FOREIGN KEY (ID_Cliente) REFERENCES Clientes(ID_Cliente),
+    FOREIGN KEY (ID_Cliente) REFERENCES Clientes(CPF_CNPJ),
     FOREIGN KEY (ID_Projeto) REFERENCES Projeto(ID_Projeto),
     FOREIGN KEY (Comprovante) REFERENCES Documento(ID_Documento),
     CHECK (Forma_Pag = "Cartao" or Forma_Pag = "Boleto" or Forma_Pag = "Transferencia")
+    );
+
+CREATE TABLE Mat_Tarefa(
+    Material int NOT NULL,
+    Tarefa int NOT NULL,
+    Quantidade int NOT NULL,
+    FOREIGN KEY (Material) REFERENCES Material(ID_Material),
+    FOREIGN KEY (Tarefa) REFERENCES Tarefa(ID_Tarefa)
+    );
+
+CREATE TABLE Equipe_Proj(
+    Projeto int NOT NULL,
+    Equipe int NOT NULL,
+    FOREIGN KEY (Projeto) REFERENCES Projeto(ID_Projeto),
+    FOREIGN KEY (Equipe) REFERENCES Equipe(ID_Equipe)
+    );
+
+CREATE TABLE Equipe_Tarefa(
+    Tarefa int NOT NULL,
+    Equipe int NOT NULL,
+    FOREIGN KEY (Tarefa) REFERENCES Tarefa(ID_Tarefa),
+    FOREIGN KEY (Equipe) REFERENCES Equipe(ID_Equipe)
+    );
+
+CREATE TABLE Mat_Forn(
+    Material int NOT NULL,
+    Fornecedor char(18) NOT NULL,
+	Preco double NOT NULL,
+    FOREIGN KEY (Material) REFERENCES Material(ID_Material),
+    FOREIGN KEY (Fornecedor) REFERENCES Fornecedor(CNPJ)
     );
