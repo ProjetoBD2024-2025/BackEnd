@@ -11,7 +11,7 @@ CREATE TABLE Clientes (
     Email varchar(150) NOT NULL,
     Endereço varchar(150) NOT NULL,
     Senha varchar(25) NOT NULL,
-    Img_Prefil blob 
+    Img_Perfil blob 
 );
 
 CREATE TABLE Projeto (
@@ -39,7 +39,7 @@ CREATE TABLE Engenheiro (
     Proj_Atual int,
     Equipe int,
     Senha varchar(25) NOT NULL,
-    Img_Prefil blob 
+    Img_Perfil blob 
 );
 
 CREATE TABLE Equipe (
@@ -147,7 +147,8 @@ ALTER TABLE Tarefa
 ADD FOREIGN KEY (ID_Projeto) REFERENCES Projeto (ID_Projeto);
 
 ALTER TABLE Cronograma
-ADD FOREIGN KEY (Responsavel) REFERENCES Equipe (ID_Equipe);
+ADD FOREIGN KEY (Responsavel) REFERENCES Equipe (ID_Equipe),
+ADD FOREIGN KEY (ID_Projeto) REFERENCES Projeto (ID_Projeto);
 
 ALTER TABLE Documento
 ADD FOREIGN KEY (ID_Projeto) REFERENCES Projeto (ID_Projeto);
