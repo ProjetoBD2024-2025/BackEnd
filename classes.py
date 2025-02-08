@@ -1,82 +1,42 @@
 import mysql.connector
 
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-class Engenheiro:
-
-    def __init__(self):
-
-        self.connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Admin123",
-            database="Projeto_bd"
-        )
-
-        self.cursor = self.connection.cursor()
-
-
-    def get_engenheiro(self, Identifier):
-
-        arg = f"""SELECT Engenheiros.*, EquipeProjeto.* 
-                  FROM (SELECT * FROM Engenheiro WHERE CREA = {Identifier}) AS Engenheiros 
-                  JOIN (SELECT Equipes.ID_Equipe, Equipes.Nome, Equipes.Supervisor, Projetos.ID_Projeto, Projetos.Contratante
-                        FROM Equipe AS Equipes 
-                        INNER JOIN Projeto AS Projetos 
-                        ON Equipes.ID_Equipe = Projetos.Equipe_Resp) AS EquipeProjeto
-                  ON Engenheiros.CREA = EquipeProjeto.Supervisor"""
-
-        self.cursor.execute(arg)
-        result = self.cursor.fetchone()
-        
-        return result
-
-
-    def delete_engenheiro(self, Identifier):
-
-        arg = f"DELETE FROM Engenheiro WHERE ID = {Identifier}"
-        self.cursor.execute(arg)
-        self.connection.commit()
-
-
-    def edit_engenheiro(self, Identifier, values):
-
-        arg = """UPDATE Engenheiro SET Nome = '{0}',
-                        CREA = '{1}',
-                        Telefone = '{2}',
-                        Email = '{3}'
-                        WHERE CREA = {4}""".format(values['Nome'],
-                                                   values['CREA'],
-                                                   values['Telefone'],
-                                                   values['Email'],
-                                                   Identifier)
-        
-        self.cursor.execute(arg)
-        self.connection.commit()
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 class Projeto:
 
     def __init__(self):
 
         self.connection = mysql.connector.connect(
             host="localhost",
-            user="root",
-            password="Admin123",
-            database="Projeto_bd"
+            user="develbackend",
+            password="uniquepassword",
+            database="projeto_db"
         )
 
         self.cursor = self.connection.cursor()
 
 
     def get_all_projetos(self):
+        arg = """
+            SELECT 
+                Projeto.*, 
+                
+                -- Informações do Cliente (Contratante)
+                Clientes.Nome AS Cliente_Nome,
+                Clientes.Telefone AS Cliente_Telefone,
+                Clientes.Email AS Cliente_Email,
+                Clientes.Endereço AS Cliente_Endereco,
+                
+                -- Informações da Equipe Responsável
+                Equipe.Nome AS Equipe_Nome,
+                
+                -- Pegando o Nome do Supervisor (e não o ID/CREA)
+                Engenheiro.Nome AS Supervisor_Nome  
 
-        arg = "SELECT * FROM Projeto"
+            FROM Projeto
+            JOIN Clientes ON Projeto.Contratante = Clientes.CPF_CNPJ
+            JOIN Equipe ON Projeto.Equipe_Resp = Equipe.ID_Equipe
+            JOIN Engenheiro ON Equipe.Supervisor = Engenheiro.CREA  -- Pega o nome do supervisor corretamente
+        """
+
         self.cursor.execute(arg)
         result = self.cursor.fetchall()
         
@@ -84,11 +44,20 @@ class Projeto:
 
 
     def get_projeto(self, Identifier):
-
-        arg = f"""SELECT Projetos.*, Equipes.* 
-                  FROM (SELECT * FROM Projeto WHERE ID_Projeto = {Identifier}) AS Projetos 
-                  JOIN Equipe AS Equipes 
-                  ON Projetos.Equipe_Resp = Equipes.ID_Equipe"""
+        arg = f"""
+            SELECT 
+                Projetos.*, 
+                Equipes.*, 
+                Clientes.Nome AS Cliente_Nome,
+                Clientes.Telefone AS Cliente_Telefone,
+                Clientes.Email AS Cliente_Email,
+                Clientes.Endereço AS Cliente_Endereco,
+                Engenheiro.Nome AS Supervisor_Nome
+            FROM (SELECT * FROM Projeto WHERE ID_Projeto = {Identifier}) AS Projetos 
+            JOIN Equipe AS Equipes ON Projetos.Equipe_Resp = Equipes.ID_Equipe
+            JOIN Clientes ON Projetos.Contratante = Clientes.CPF_CNPJ
+            LEFT JOIN Engenheiro ON Equipes.Supervisor = Engenheiro.CREA
+        """
 
         self.cursor.execute(arg)
         result = self.cursor.fetchone()
@@ -120,41 +89,98 @@ class Projeto:
 
 
     def edit_projeto(self, Identifier, values):
-
-        arg = """UPDATE Projeto SET Nome = '{0}',
-                                    Descricao = '{1}',
-                                    Data_Inicio = '{2}',
-                                    Data_Fim_Prev = '{3}',
-                                    Status_ = '{4}',
-                                    Orcamento_previsto = {5},
-                                    Contratante = '{6}',
-                                    Equipe_Resp = {7} 
-                                    WHERE ID_Projeto = {8}""".format(values['Nome'],
-                                                                    values['Descricao'],
-                                                                    values['Data_Inicio'],
-                                                                    values['Data_Fim_Prev'],
-                                                                    values['Status'],
-                                                                    values['Orcamento_previsto'],
-                                                                    values['Contratante'],
-                                                                    values['Equipe_Resp'],
-                                                                    Identifier)
+        print(values)
+        arg = """UPDATE Projeto SET 
+                    Nome = %s,
+                    Descricao = %s,
+                    Data_Inicio = %s,
+                    Data_Fim_Prev = %s,
+                    Status_ = %s,
+                    Orcamento_previsto = %s,
+                    Equipe_Resp = %s,
+                    Contratante = %s
+                WHERE ID_Projeto = %s"""
         
-        self.cursor.execute(arg)
+        # Passando os parâmetros de forma segura
+        params = (
+            values['Nome'], 
+            values['Descricao'], 
+            values['Data_Inicio'], 
+            values['Data_Fim_Prev'], 
+            values['Status'], 
+            values['Orcamento_previsto'], 
+            values['Equipe_Resp'],  # Adicionando a equipe responsável
+            values['Contratante'],  # Adicionando o contratante
+            Identifier
+        )
+        
+        self.cursor.execute(arg, params)
         self.connection.commit()
-
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+class Documentos:
+    def __init__(self):
+        self.connection = mysql.connector.connect(
+            host="localhost",
+            user="develbackend",
+            password="uniquepassword",
+            database="projeto_db"
+        )
 
-'''class Equipe:
+        self.cursor = self.connection.cursor()
+    def get_documento(self, Identifier):
+        arg = f"SELECT * FROM Documento WHERE ID_Projeto = {Identifier}"
+        self.cursor.execute(arg)
+        result = self.cursor.fetchall()
+        return result
+
+    def get_documentoDownload(self, Identifier):
+        arg = f"SELECT * FROM Documento WHERE ID_Documento = {Identifier}"
+        self.cursor.execute(arg)
+        result = self.cursor.fetchall()
+        return result
+    
+    def add_documento(self, Identifier, nome_arquivo, tipo_arquivo, documento_blob):
+        arg = """INSERT INTO Documento (ID_Projeto, Nome_Arquivo, Tipo_Arquivo, Arquivo_Bin)
+                VALUES (%s, %s, %s, %s)"""
+        
+        params = (Identifier, nome_arquivo, tipo_arquivo, documento_blob)
+        
+        self.cursor.execute(arg, params)
+        self.connection.commit()
+
+class Cliente:
 
     def __init__(self):
 
         self.connection = mysql.connector.connect(
             host="localhost",
-            user="root",
-            password="Admin123",
-            database="Projeto_bd"
+            user="develbackend",
+            password="uniquepassword",
+            database="projeto_db"
+        )
+
+        self.cursor = self.connection.cursor()
+
+
+    def get_all_clientes(self):
+
+        arg = "SELECT * FROM Clientes"
+        self.cursor.execute(arg)
+        result = self.cursor.fetchall()
+
+        return result
+
+class Equipe:
+
+    def __init__(self):
+
+        self.connection = mysql.connector.connect(
+            host="localhost",
+            user="develbackend",
+            password="uniquepassword",
+            database="projeto_db"
         )
 
         self.cursor = self.connection.cursor()
@@ -162,54 +188,21 @@ class Projeto:
 
     def get_all_equipes(self):
 
-        arg = "SELECT * FROM Equipes"
+        arg = "SELECT * FROM Equipe"
         self.cursor.execute(arg)
         result = self.cursor.fetchall()
 
         return result
     
-
-    def get_equipe(self, Identifier):
-
-        arg = f"SELECT * FROM Equipes WHERE ID = {Identifier}"
-        self.cursor.execute(arg)
-        result = self.cursor.fetchall()
-
-        return result
-    
-
-    def add_equipe(self, Identifier, values):
-
-        arg = f"""INSERT INTO Equipes (ID, NOME, DESCRICAO, DATA_INICIO, DATA_FIM_PREV, STATUS, ORCAMENTO_PREVISTO, CONTRATANTE, EQUIPE_RESP)
-                    VALUES ({Identifier},{values[0]},{values[1]},{values[2]},{values[3]},{values[4]},{values[5]},{values[6]},{values[7]})"""
-        
-        self.cursor.execute(arg)
-        self.connection.commit()
-
-
-    def delete_equipe(self, Identifier):
-
-        arg = f"DELETE FROM Equipes WHERE ID = {Identifier}"
-        self.cursor.execute(arg)
-        self.connection.commit()
-
-    
-    def edit_equipe(self, Identifier):
-        pass'''
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 class Tarefa:
 
     def __init__(self):
 
         self.connection = mysql.connector.connect(
             host="localhost",
-            user="root",
-            password="Admin123",
-            database="Projeto_bd"
+            user="develbackend",
+            password="uniquepassword",
+            database="projeto_db"
         )
 
         self.cursor = self.connection.cursor()
