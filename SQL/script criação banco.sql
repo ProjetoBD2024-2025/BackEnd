@@ -92,7 +92,7 @@ CREATE TABLE Documento (
     ID_Projeto int NOT NULL,
     Nome_Arquivo varchar(100) NOT NULL,
     Tipo_Arquivo varchar(10) NOT NULL,
-    Arquivo_Bin blob NOT NULL
+    Arquivo_Bin longblob NOT NULL
 );
 
 CREATE TABLE Pagamentos (
@@ -144,32 +144,32 @@ ALTER TABLE Equipe
 ADD FOREIGN KEY (Supervisor) REFERENCES Engenheiro (CREA);
 
 ALTER TABLE Tarefa
-ADD FOREIGN KEY (ID_Projeto) REFERENCES Projeto (ID_Projeto);
+ADD CONSTRAINT tarefa_ibfk_1 FOREIGN KEY (ID_Projeto) REFERENCES Projeto(ID_Projeto) ON DELETE CASCADE;
 
 ALTER TABLE Cronograma
 ADD FOREIGN KEY (Responsavel) REFERENCES Equipe (ID_Equipe),
-ADD FOREIGN KEY (ID_Projeto) REFERENCES Projeto (ID_Projeto);
+ADD CONSTRAINT cronograma_ibfk_2 FOREIGN KEY (ID_Projeto) REFERENCES Projeto(ID_Projeto) ON DELETE CASCADE;
 
 ALTER TABLE Documento
-ADD FOREIGN KEY (ID_Projeto) REFERENCES Projeto (ID_Projeto);
+ADD CONSTRAINT documento_ibfk_1 FOREIGN KEY (ID_Projeto) REFERENCES Projeto(ID_Projeto) ON DELETE CASCADE;
 
 ALTER TABLE Pagamentos
-ADD FOREIGN KEY (ID_Cliente) REFERENCES Clientes (CPF_CNPJ),
-ADD FOREIGN KEY (ID_Projeto) REFERENCES Projeto (ID_Projeto),
-ADD FOREIGN KEY (Comprovante) REFERENCES Documento (ID_Documento);
+ADD CONSTRAINT pagamentos_ibfk_1 FOREIGN KEY (ID_Cliente) REFERENCES Clientes(CPF_CNPJ) ON DELETE CASCADE,
+ADD CONSTRAINT pagamentos_ibfk_2 FOREIGN KEY (ID_Projeto) REFERENCES Projeto(ID_Projeto) ON DELETE CASCADE,
+ADD CONSTRAINT pagamentos_ibfk_3 FOREIGN KEY (Comprovante) REFERENCES Documento(ID_Documento) ON DELETE CASCADE;
 
 ALTER TABLE Mat_Tarefa
 ADD FOREIGN KEY (Material) REFERENCES Material (ID_Material),
-ADD FOREIGN KEY (Tarefa) REFERENCES Tarefa (ID_Tarefa),
+ADD CONSTRAINT mat_tarefa_ibfk_2 FOREIGN KEY (Tarefa) REFERENCES Tarefa(ID_Tarefa) ON DELETE CASCADE,
 ADD PRIMARY KEY (Tarefa, Material);
 
 ALTER TABLE Equipe_Proj
-ADD FOREIGN KEY (Projeto) REFERENCES Projeto (ID_Projeto),
+ADD CONSTRAINT equipe_proj_ibfk_2 FOREIGN KEY (Projeto) REFERENCES Projeto(ID_Projeto) ON DELETE CASCADE,
 ADD FOREIGN KEY (Equipe) REFERENCES Equipe (ID_Equipe),
 ADD PRIMARY KEY (Projeto, Equipe);
 
 ALTER TABLE Equipe_Tarefa
-ADD FOREIGN KEY (Tarefa) REFERENCES Tarefa (ID_Tarefa),
+ADD CONSTRAINT equipe_tarefa_ibfk_2 FOREIGN KEY (Tarefa) REFERENCES Tarefa(ID_Tarefa) ON DELETE CASCADE,
 ADD FOREIGN KEY (Equipe) REFERENCES Equipe (ID_Equipe),
 ADD PRIMARY KEY (Equipe, Tarefa);
 
@@ -177,3 +177,68 @@ ALTER TABLE Mat_Forn
 ADD FOREIGN KEY (Material) REFERENCES Material (ID_Material),
 ADD FOREIGN KEY (Fornecedor) REFERENCES Fornecedor (CNPJ),
 ADD PRIMARY KEY (Material, Fornecedor);
+
+CREATE VIEW DetalhesCompletosProjeto AS
+SELECT 
+    p.ID_Projeto,
+    p.Nome AS Nome_Projeto,
+    p.Descricao AS Descricao_Projeto,
+    p.Data_Inicio AS Inicio_Projeto,
+    p.Data_Fim_Prev AS Fim_Previsto_Projeto,
+    p.Status_ AS Status_Projeto,
+    p.Orcamento_previsto AS Orcamento_Projeto,
+    c.Nome AS Nome_Cliente,
+    c.CPF_CNPJ AS CPF_CNPJ_Cliente,
+    e.Nome AS Nome_Equipe,
+    e.ID_Equipe,
+    t.ID_Tarefa,
+    t.Nome AS Nome_Tarefa,
+    t.Descricao AS Descricao_Tarefa,
+    t.Data_Inicio AS Inicio_Tarefa,
+    t.Data_Fim_Prev AS Fim_Previsto_Tarefa,
+    t.Status_ AS Status_Tarefa,
+    m.Nome AS Nome_Material,
+    m.Un_Medida AS Unidade_Medida,
+    mt.Quantidade AS Quantidade_Material,
+    f.Nome AS Nome_Fornecedor,
+    f.CNPJ AS CNPJ_Fornecedor,
+    cr.Data_ AS Data_Cronograma,
+    cr.Atividade_descrita AS Atividade_Cronograma,
+    eq.Nome AS Responsavel_Cronograma
+FROM 
+    Projeto p
+JOIN 
+    Clientes c ON p.Contratante = c.CPF_CNPJ
+JOIN 
+    Equipe e ON p.Equipe_Resp = e.ID_Equipe
+LEFT JOIN 
+    Tarefa t ON p.ID_Projeto = t.ID_Projeto
+LEFT JOIN 
+    Mat_Tarefa mt ON t.ID_Tarefa = mt.Tarefa
+LEFT JOIN 
+    Material m ON mt.Material = m.ID_Material
+LEFT JOIN 
+    Mat_Forn mf ON m.ID_Material = mf.Material
+LEFT JOIN 
+    Fornecedor f ON mf.Fornecedor = f.CNPJ
+LEFT JOIN 
+    Cronograma cr ON p.ID_Projeto = cr.ID_Projeto
+LEFT JOIN 
+    Equipe eq ON cr.Responsavel = eq.ID_Equipe;
+
+DELIMITER $$
+
+CREATE PROCEDURE alocacao_engenheiro (IN identifier INT)
+BEGIN
+    DECLARE projeto_atual INT;
+
+    SELECT Proj_Atual INTO projeto_atual FROM Engenheiro WHERE CREA = identifier;
+
+    IF  projeto_atual IS NOT Null THEN
+        SELECT Nome FROM Projeto WHERE ID_Projeto = projeto_atual;
+    ELSE
+        SELECT 'O Engenheiro não possui projeto atual!' AS mensagem;
+    END IF; 
+END $$
+
+DELIMITER ;
