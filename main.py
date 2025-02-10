@@ -16,7 +16,8 @@ app.json.sort_keys = False
 CORS(app, resources={
     r"/projetos/*": {"origins": "http://localhost:5173"},
     r"/clientes/*": {"origins": "http://localhost:5173"},
-    r"/equipes/*": {"origins": "http://localhost:5173"}
+    r"/equipes/*": {"origins": "http://localhost:5173"},
+    r"/tarefas/*": {"origins": "http://localhost:5173"}
 })
 
 # Visualizar todos os projetos
@@ -44,7 +45,6 @@ def get_projects():
 
         
     return jsonify(result), 200
-
 
 # Visualizar projeto específico
 @app.route('/projetos/<int:projeto_id>', methods=['GET'])
@@ -75,7 +75,6 @@ def get_projects_id(projeto_id):
     }
     return jsonify(result), 200
 
-
 #Adicionar projeto
 @app.route('/projetos', methods=['POST'])
 def post_projects():
@@ -86,7 +85,6 @@ def post_projects():
 
     return jsonify({'Mensagem': 'Projeto cadastrado com sucesso!'}), 201
 
-
 #Deletar projeto específico
 @app.route('/projetos/<int:projeto_id>', methods=['DELETE'])
 def exclude_project(projeto_id):
@@ -94,7 +92,6 @@ def exclude_project(projeto_id):
     Projeto().delete_projeto(projeto_id)
 
     return jsonify({'Mensagem': 'Projeto excluído com sucesso!'}), 200
-
 
 #Editar projeto específico
 @app.route('/projetos/edit/<int:projeto_id>', methods=['PUT'])
@@ -114,11 +111,16 @@ def update_project(projeto_id):
 @app.route('/projetos/<int:projeto_id>/tarefas', methods=['GET'])
 def get_tasks(projeto_id):
     
-    consulta = Tarefa().get_all_tarefas(projeto_id)
+    consulta = Tarefa().get_all_tarefas_projetos(projeto_id)
     result = [
         {
             "Nome": item[2],
-            "Status": item[6]
+            "Descricao": item[3],
+            "Data_Inicio": item[4],
+            "Data_Fim_Prev": item[5],
+            "Status": item[6],
+            "ID_Tarefa": item[0],
+            "ID_Projeto": item[1]
          } for item in consulta]
     
     return jsonify(result), 200
@@ -160,14 +162,54 @@ def exclude_tasks(projeto_id, tarefa_id):
     return jsonify({'Mensagem': 'Tarefa excluída com sucesso!'}), 200
 
 
+@app.route('/tarefas', methods=['GET'])
+def get_all_tasks():
+    
+    consulta = Tarefa().get_all_tarefas()
+    result = [
+        {
+            "Nome": item[2],
+            "Status": item[6],
+            "Descricao": item[3],
+            "Data_Inicio": item[4],
+            "Data_Fim_Prev": item[5],
+            "ID_Tarefa": item[0],
+            "ID_Projeto": item[1]
+         } for item in consulta]
+    
+    return jsonify(result), 200
+
+@app.route('/tarefas/<int:tarefa_id>', methods=['GET'])
+def get_task(tarefa_id):
+    consulta = Tarefa().get_tarefa(tarefa_id)
+    result = {
+        "Nome": consulta[2],
+        "Status": consulta[6],
+        "Descricao": consulta[3],
+        "Data_Inicio": consulta[4],
+        "Data_Fim_Prev": consulta[5],
+        "ID_Tarefa": consulta[0],
+        "ID_Projeto": consulta[1]
+    }
+    
+    return jsonify(result), 200
+
+@app.route('/tarefas/edit/<int:tarefa_id>', methods=['PUT'])
+def update_task(tarefa_id):
+    data = request.get_json()
+    Tarefa().edit_tarefa(tarefa_id, data)
+    return jsonify({'Mensagem': 'Tarefa editado com sucesso!'}), 200
+
+@app.route('/tarefas/<int:tarefa_id>', methods=['DELETE'])
+def delete_task(tarefa_id):
+    Tarefa().delete_tarefa(tarefa_id)
+    return jsonify({'Mensagem': 'Tarefa deletada com sucesso!'}), 200
+
 #Editar tarefa em projeto
 @app.route('/projetos/<int:projeto_id>/tarefas/<int:tarefa_id>/edit', methods=['PUT'])
-def update_task(projeto_id, tarefa_id):
-
+def update_task_project(projeto_id, tarefa_id):
     data = request.get_json()
-
     Tarefa().edit_tarefa(tarefa_id, data)
-
     return jsonify({'Mensagem': 'Projeto editado com sucesso!'}), 200
 
 @app.route('/clientes', methods=['GET'])
@@ -179,10 +221,28 @@ def get_clients():
             "Nome": item[0],
             "Telefone": item[2],
             "Email": item[3],
-            "CPF_CNPJ": item[1]
+            "CPF_CNPJ": item[1],
+            "Endereco": item[4]
         } for item in consulta
     ]   
     return jsonify(result), 200
+
+@app.route('/clientes/<int:client_id>', methods=['PUT'])
+def update_clients(client_id):
+    data = request.get_json()
+    Cliente().update_cliente(client_id, data)
+    return jsonify({'Mensagem': 'Cliente editado com sucesso!'}), 200
+
+@app.route('/clientes/<int:client_id>', methods=['DELETE'])
+def delete_clients(client_id):
+    Cliente().delete_cliente(client_id)
+    return jsonify({'Mensagem': 'Cliente deletado com sucesso!'}), 200
+
+@app.route('/clientes', methods=['POST'])
+def post_clients():
+    data = request.get_json()
+    Cliente().add_cliente(data)
+    return jsonify({'Mensagem': 'Cliente cadastrado com sucesso!'}), 201
 
 @app.route('/equipes', methods=['GET'])
 def get_teams():
@@ -219,10 +279,6 @@ def upload_documento(projeto_id):
 @app.route('/projetos/<int:projeto_id>/documentos', methods=['GET'])
 def get_documents(projeto_id):
     documentos = Documentos().get_documento(projeto_id)
-
-    if not documentos:
-        return jsonify({"mensagem": "Nenhum documento encontrado para este projeto."}), 404
-
     result = []
     for item in documentos:
         arquivo_blob = item[3]  # Documento em formato BLOB
@@ -276,6 +332,11 @@ def get_documento(projeto_id, documento_id):
     file_stream = io.BytesIO(arquivo_bin)
 
     return send_file(file_stream, as_attachment=True, download_name=nome_arquivo_ascii, mimetype=tipo_arquivo)
+
+@app.route('/projetos/<int:projeto_id>/documentos/<int:documento_id>', methods=['DELETE'])
+def delete_documento(projeto_id, documento_id):
+    Documentos().delete_documento(documento_id)
+    return jsonify({"mensagem": "Documento deletado com sucesso!"}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)

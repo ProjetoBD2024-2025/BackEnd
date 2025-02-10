@@ -149,6 +149,11 @@ class Documentos:
         
         self.cursor.execute(arg, params)
         self.connection.commit()
+    
+    def delete_documento(self, Identifier):
+        arg = f"DELETE FROM Documento WHERE ID_Documento = {Identifier}"
+        self.cursor.execute(arg)
+        self.connection.commit()
 
 class Cliente:
 
@@ -171,6 +176,39 @@ class Cliente:
         result = self.cursor.fetchall()
 
         return result
+    
+    def add_cliente(self, data):
+
+        arg = """INSERT INTO Clientes (CPF_CNPJ, Nome, Telefone, Email, Endereço, Senha)
+                VALUES (%s, %s, %s, %s, %s, %s)"""
+        params = (data["CPF_CNPJ"], data["Nome"], data["Telefone"], data["Email"], data["Endereco"], data["Senha"])
+        
+        self.cursor.execute(arg, params)
+        self.connection.commit()
+        
+    def update_cliente(self, Identifier, values):
+        arg = """UPDATE Clientes SET 
+                    Nome = %s,
+                    Telefone = %s,
+                    Email = %s,
+                    Endereço = %s
+                WHERE CPF_CNPJ = %s"""
+        
+        params = (
+            values['Nome'],
+            values['Telefone'],
+            values['Email'],
+            values['Endereco'],
+            Identifier
+        )
+        
+        self.cursor.execute(arg, params)
+        self.connection.commit()
+    
+    def delete_cliente(self, Identifier):
+        arg = f"DELETE FROM Clientes WHERE CPF_CNPJ = {Identifier}"
+        self.cursor.execute(arg)
+        self.connection.commit()
 
 class Equipe:
 
@@ -222,14 +260,21 @@ class Tarefa:
         self.connection.commit()
 
 
-    def get_all_tarefas(self, project_id):
+    def get_all_tarefas(self):
         
-        arg = f"SELECT * FROM Tarefa WHERE ID_Projeto = {project_id}"
+        arg = f"SELECT * FROM Tarefa"
         self.cursor.execute(arg)
         result = self.cursor.fetchall()
         
         return result
     
+    def get_all_tarefas_projetos(self, Identifier):
+        
+        arg = f"SELECT * FROM Tarefa WHERE ID_Projeto = {Identifier}"
+        self.cursor.execute(arg)
+        result = self.cursor.fetchall()
+        
+        return result
 
     def get_tarefa(self, Identifier):
 
@@ -250,19 +295,20 @@ class Tarefa:
 
     def edit_tarefa(self, Identifier, values):
 
-        arg = """UPDATE Tarefa SET ID_Projeto = {0},
-                                   Nome = '{1}'
-                                   Descricao = '{2}',
-                                   Data_Inicio = '{3}',
-                                   Data_Fim_Prev = '{4}',
-                                   Status_ = '{5}' 
-                                   WHERE ID_Tarefa = {6}""".format(values['ID_Projeto'],
-                                                                   values['Nome'],
-                                                                   values['Descricao'],
-                                                                   values['Data_Inicio'],
-                                                                   values['Data_Fim_Prev'],
-                                                                   values['Status'],
-                                                                   Identifier)
-        
-        self.cursor.execute(arg)
+        arg = """UPDATE Tarefa SET 
+                    Nome = %s,
+                    Descricao = %s,
+                    Data_Inicio = %s,
+                    Data_Fim_Prev = %s,
+                    Status_ = %s
+                WHERE ID_Tarefa = %s"""
+        params = (
+            values["Nome"],
+            values["Descricao"],
+            values["Data_Inicio"],
+            values["Data_Fim_Prev"],
+            values["Status"],
+            Identifier
+        )
+        self.cursor.execute(arg, params)
         self.connection.commit()

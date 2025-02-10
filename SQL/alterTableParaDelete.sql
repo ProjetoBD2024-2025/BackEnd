@@ -63,3 +63,9 @@ ADD CONSTRAINT pagamentos_ibfk_3
 FOREIGN KEY (Comprovante) REFERENCES Documento(ID_Documento) ON DELETE CASCADE;
 
 ALTER TABLE Documento MODIFY COLUMN Arquivo_Bin LONGBLOB;
+
+ALTER TABLE Pagamentos 
+DROP FOREIGN KEY pagamentos_ibfk_1, 
+ADD CONSTRAINT pagamentos_ibfk_1 
+FOREIGN KEY (ID_Cliente) REFERENCES Clientes(CPF_CNPJ) 
+ON DELETE CASCADE;
